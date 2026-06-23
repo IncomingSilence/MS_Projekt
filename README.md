@@ -67,10 +67,42 @@ python app/app.py    # öffnet eine lokale Weboberfläche
 > eine ehrliche Bewertung lohnt ein Test mit eigenen Handyfotos oder dem
 > [PlantDoc]-Datensatz (Feldaufnahmen).
 
+## Training auf AMD-GPU (Radeon RX 5700 XT)
+
+`src/train.py` erkennt die Hardware automatisch (`get_device()`): CUDA / ROCm /
+DirectML / MPS / CPU. Für die 5700 XT gibt es zwei Wege:
+
+### Variante A – Windows + DirectML (empfohlen, am einfachsten)
+
+```bash
+git clone <DEINE_REPO_URL> && cd MS_Projekt
+python -m venv .venv && .venv\Scripts\activate
+pip install torch-directml            # bringt passendes torch mit
+pip install -r requirements.txt       # torch/torchvision werden nicht ueberschrieben
+python -m src.train --data-root data/<datensatz> --backbone resnet18
+```
+
+`torch_directml` wird automatisch genutzt, sobald installiert. Funktioniert mit
+jeder DirectX-12-GPU – ideal für Navi-Karten wie die 5700 XT unter Windows.
+
+### Variante B – Linux + ROCm
+
+Die 5700 XT (gfx1010) wird von aktuellem ROCm offiziell **nicht** unterstützt,
+läuft aber oft mit einem Override. PyTorch (ROCm-Build) meldet sich dann als
+`cuda`, der Code braucht keine Änderung:
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.0
+export HSA_OVERRIDE_GFX_VERSION=10.3.0   # noetiger Workaround fuer Navi 10
+python -m src.train --data-root data/<datensatz> --backbone resnet18
+```
+
+> Wenn ROCm zickt: einfach Variante A (DirectML) nehmen.
+
 ## Setup-Hinweise
 
-- **GPU**: Colab/Kaggle bieten kostenlose GPUs. Dieser Mac (Intel, integrierte
-  Grafik) hat weder CUDA noch MPS → nur für Inferenz/Demo gedacht.
+- **GPU**: Colab/Kaggle bieten kostenlose NVIDIA-GPUs (kein AMD-Setup nötig).
+  Der Mac (Intel, integrierte Grafik) hat weder CUDA noch MPS → nur Inferenz/Demo.
 - **Kaggle-Token**: Konto → *Account* → *Create New API Token* lädt `kaggle.json`.
   In Colab hochladen, nach `~/.kaggle/kaggle.json` kopieren, `chmod 600`.
 
