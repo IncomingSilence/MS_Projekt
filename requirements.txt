@@ -1,0 +1,15 @@
+# Kern (in Google Colab bereits vorinstalliert)
+torch>=2.0
+torchvision>=0.15
+
+# Datenverarbeitung / Visualisierung / Metriken
+pillow>=9.0
+matplotlib>=3.5
+numpy>=1.23
+scikit-learn>=1.1
+
+# Lokale Demo
+gradio>=4.0
+
+# Datensatz-Download von Kaggle (nur fuer Colab / lokalen Download noetig)
+kaggle>=1.5

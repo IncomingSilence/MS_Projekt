@@ -1,0 +1,20 @@
+# Daten & Modelle (zu gross fuer Git)
+data/
+models/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# Kaggle-Token niemals committen
+kaggle.json
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
