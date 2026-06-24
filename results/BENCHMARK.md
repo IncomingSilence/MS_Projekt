@@ -1,6 +1,10 @@
 # Benchmark: Modellvergleich
 
-**Datensatz:** PlantVillage (New Plant Diseases, augmentiert) — 38 Klassen, 70.295 Train- / 17.572 Val-Bilder.
+**Tasks:** crop_disease, houseplant_health, houseplant_species
+
+# Task: crop_disease
+
+**Datensatz:** 38 Klassen, 70.295 Train- / 17.572 Val-Bilder.
 **Hardware/Device:** privateuseone:0
 
 ## Überblick
@@ -12,8 +16,8 @@
 
 ## Konfiguration
 
-- **efficientnet_b0**: 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
-- **resnet18**: 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
+- **efficientnet_b0** (efficientnet_b0): 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
+- **resnet18** (resnet18): 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
 
 ## Trainingsverlauf (Val-Accuracy je Epoche)
 
@@ -107,13 +111,142 @@
 
 **Accuracy vs. Trainingszeit**
 
-![Accuracy vs. Trainingszeit](accuracy_vs_time.png)
+![Accuracy vs. Trainingszeit](crop_disease_accuracy_vs_time.png)
 
 **Val-Accuracy je Epoche**
 
-![Val-Accuracy je Epoche](val_acc_curves.png)
+![Val-Accuracy je Epoche](crop_disease_val_acc_curves.png)
 
 ## Confusion-Matrizen
 
 - **efficientnet_b0**: ![efficientnet_b0](efficientnet_b0/confusion_matrix.png)
 - **resnet18**: ![resnet18](resnet18/confusion_matrix.png)
+
+---
+
+# Task: houseplant_health
+
+**Datensatz:** Healthy vs. Wilted Houseplants — 2 Klassen, 724 Train- / 180 Val-Bilder.
+**Hardware/Device:** privateuseone:0
+
+## Überblick
+
+| Modell | Val-Accuracy | Macro-F1 | Params | Modellgröße | Train-Zeit | Inferenz | Testbilder |
+|---|---|---|---|---|---|---|---|
+| **houseplant_health** | 88.33% | 0.8833 | 11.2M | 64.6 MB | 2m 30s | 0.54 ms/Bild | — |
+
+## Konfiguration
+
+- **houseplant_health** (resnet18): 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
+
+## Trainingsverlauf (Val-Accuracy je Epoche)
+
+- **houseplant_health**: 73.9% → 80.6% → 82.8% → 88.3% → 85.6%
+
+## Schwächste Klassen (niedrigster F1)
+
+- **houseplant_health**: wilted (0.883), healthy (0.884)
+
+## Testbild-Vorhersagen (unabhängige Fotos)
+
+## Diagramme
+
+**Accuracy vs. Trainingszeit**
+
+![Accuracy vs. Trainingszeit](houseplant_health_accuracy_vs_time.png)
+
+**Val-Accuracy je Epoche**
+
+![Val-Accuracy je Epoche](houseplant_health_val_acc_curves.png)
+
+## Confusion-Matrizen
+
+- **houseplant_health**: ![houseplant_health](houseplant_health/confusion_matrix.png)
+
+---
+
+# Task: houseplant_species
+
+**Datensatz:** House Plant Species (47 Arten) — 47 Klassen, 11.820 Train- / 2.954 Val-Bilder.
+**Hardware/Device:** privateuseone:0
+
+## Überblick
+
+| Modell | Val-Accuracy | Macro-F1 | Params | Modellgröße | Train-Zeit | Inferenz | Testbilder |
+|---|---|---|---|---|---|---|---|
+| **houseplant_species** | 91.33% | 0.9038 | 11.2M | 64.7 MB | 12m 39s | 0.54 ms/Bild | 2 (ohne GT) |
+| **houseplant_species_weighted** | 90.93% | 0.9038 | 11.2M | 64.7 MB | 12m 10s | 0.54 ms/Bild | 2 (ohne GT) |
+
+## Konfiguration
+
+- **houseplant_species** (resnet18): 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
+- **houseplant_species_weighted** (resnet18): 2 Kopf- + 3 Fine-Tuning-Epochen, batch=32, lr_head=0.001, lr_finetune=0.0001
+
+## Trainingsverlauf (Val-Accuracy je Epoche)
+
+- **houseplant_species**: 65.0% → 71.5% → 86.6% → 88.5% → 91.3%
+- **houseplant_species_weighted**: 65.8% → 69.5% → 85.6% → 89.1% → 90.9%
+
+## Schwächste Klassen (niedrigster F1)
+
+- **houseplant_species**: Yucca (0.533), Begonia (Begonia spp.) (0.700), Kalanchoe (0.737)
+- **houseplant_species_weighted**: Yucca (0.667), Begonia (Begonia spp.) (0.716), Dracaena (0.784)
+
+## Testbild-Vorhersagen (unabhängige Fotos)
+
+### houseplant_species
+
+| Bild | Wahrheit | Vorhersage | Konfidenz | ✓ |
+|---|---|---|---|---|
+| zimerpflanze_kevin.jpeg | — | Snake plant (Sanseviera) | 99.1% | — |
+| zimmerpflanze_kevin_1.jpeg | — | Dracaena | 76.5% | — |
+
+### houseplant_species_weighted
+
+| Bild | Wahrheit | Vorhersage | Konfidenz | ✓ |
+|---|---|---|---|---|
+| zimerpflanze_kevin.jpeg | — | Snake plant (Sanseviera) | 97.9% | — |
+| zimmerpflanze_kevin_1.jpeg | — | Dracaena | 81.0% | — |
+
+## Diagramme
+
+**Accuracy vs. Trainingszeit**
+
+![Accuracy vs. Trainingszeit](houseplant_species_accuracy_vs_time.png)
+
+**Val-Accuracy je Epoche**
+
+![Val-Accuracy je Epoche](houseplant_species_val_acc_curves.png)
+
+## Confusion-Matrizen
+
+- **houseplant_species**: ![houseplant_species](houseplant_species/confusion_matrix.png)
+- **houseplant_species_weighted**: ![houseplant_species_weighted](houseplant_species_weighted/confusion_matrix.png)
+
+---
+
+# Historie (alle Läufe, chronologisch)
+
+_Aus `results/history.jsonl` — zeigt den Effekt von Modell- und Hyperparameter-Änderungen über die Zeit._
+
+## crop_disease
+
+| Zeitpunkt | Run | Backbone | Epochen (K+F) | Batch | lr_head | lr_ft | Sampler | Val-Acc | Macro-F1 | Train-Zeit | Testbilder |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-06-23 23:49:27 | resnet18 | resnet18 | 2+3 | 32 | 0.001 | 0.0001 | — | 99.52% | 0.9951 | 24m 31s | 33/33 |
+| 2026-06-24 01:20:54 | efficientnet_b0 | efficientnet_b0 | 2+3 | 32 | 0.001 | 0.0001 | — | 99.69% | 0.9969 | 90m 6s | 32/33 |
+
+## houseplant_species
+
+| Zeitpunkt | Run | Backbone | Epochen (K+F) | Batch | lr_head | lr_ft | Sampler | Val-Acc | Macro-F1 | Train-Zeit | Testbilder |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-06-24 02:16:42 | houseplant_species | resnet18 | 2+3 | 32 | 0.001 | 0.0001 | — | 91.33% | 0.9038 | 12m 39s | — |
+| 2026-06-24 02:33:11 | houseplant_species_weighted | resnet18 | 2+3 | 32 | 0.001 | 0.0001 | weighted | 90.93% | 0.9038 | 12m 10s | — |
+
+## houseplant_health
+
+| Zeitpunkt | Run | Backbone | Epochen (K+F) | Batch | lr_head | lr_ft | Sampler | Val-Acc | Macro-F1 | Train-Zeit | Testbilder |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-06-24 02:19:33 | houseplant_health | resnet18 | 2+3 | 32 | 0.001 | 0.0001 | — | 88.33% | 0.8833 | 2m 30s | — |
+
+---

@@ -1,0 +1,5 @@
+[feature_extraction] Epoche 1/2 | train_loss 2.2995 acc 0.449 | val_loss 1.3390 acc 0.658 | 142.6s
+[feature_extraction] Epoche 2/2 | train_loss 1.3369 acc 0.658 | val_loss 1.0991 acc 0.695 | 144.1s
+[fine_tuning] Epoche 1/3 | train_loss 0.5957 acc 0.830 | val_loss 0.4919 acc 0.856 | 146.6s
+[fine_tuning] Epoche 2/3 | train_loss 0.2988 acc 0.918 | val_loss 0.3678 acc 0.891 | 149.5s
+[fine_tuning] Epoche 3/3 | train_loss 0.2016 acc 0.946 | val_loss 0.3258 acc 0.909 | 148.0s

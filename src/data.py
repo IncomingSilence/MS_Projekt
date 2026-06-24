@@ -12,10 +12,11 @@ Zwei Layouts werden unterstuetzt:
 from __future__ import annotations
 
 import os
+from collections import Counter
 from typing import Optional
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, WeightedRandomSampler, random_split
 from torchvision import datasets, transforms
 
 # ImageNet-Statistik: die vortrainierten Backbones erwarten genau diese Normalisierung.
@@ -60,14 +61,44 @@ def _valid_dir(root: str) -> str:
     raise FileNotFoundError(f"Kein valid/ oder val/ Ordner unter {root}")
 
 
+def _train_targets(train_ds) -> list[int]:
+    """Liefert die Klassen-Labels aller Train-Samples (auch bei Subset)."""
+    if isinstance(train_ds, torch.utils.data.Subset):
+        base = train_ds.dataset
+        return [base.targets[i] for i in train_ds.indices]
+    return list(train_ds.targets)
+
+
+def _build_weighted_sampler(train_ds) -> WeightedRandomSampler:
+    """Sampler, der seltene Klassen haeufiger zieht (gegen Klassen-Ungleichgewicht).
+
+    Sample-Gewicht = 1 / Haeufigkeit der eigenen Klasse, sodass im Erwartungswert
+    jede Klasse gleich oft im Batch landet.
+    """
+    targets = _train_targets(train_ds)
+    counts = Counter(targets)
+    class_weight = {cls: 1.0 / n for cls, n in counts.items()}
+    sample_weights = [class_weight[t] for t in targets]
+    return WeightedRandomSampler(
+        weights=torch.as_tensor(sample_weights, dtype=torch.double),
+        num_samples=len(sample_weights),
+        replacement=True,
+    )
+
+
 def create_dataloaders(
     data_root: str,
     batch_size: int = 32,
     num_workers: Optional[int] = None,
     val_split: float = 0.2,
     seed: int = 42,
+    weighted_sampler: bool = False,
 ):
     """Erzeugt Train-/Val-DataLoader und gibt zusaetzlich die Klassennamen zurueck.
+
+    Mit ``weighted_sampler=True`` wird statt zufaelligem Shuffle ein
+    WeightedRandomSampler verwendet, der seltene Klassen haeufiger zieht
+    (sinnvoll bei stark unausgewogenen Datensaetzen wie den Zimmerpflanzen-Arten).
 
     Returns
     -------
@@ -108,10 +139,13 @@ def create_dataloaders(
         train_ds = torch.utils.data.Subset(full_train, list(train_idx))
         val_ds = torch.utils.data.Subset(full_val, list(val_idx))
 
+    # Sampler und shuffle schliessen sich gegenseitig aus.
+    sampler = _build_weighted_sampler(train_ds) if weighted_sampler else None
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=(sampler is None),
+        sampler=sampler,
         num_workers=num_workers,
         pin_memory=pin_memory,
     )

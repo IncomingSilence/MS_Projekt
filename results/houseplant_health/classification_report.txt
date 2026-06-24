@@ -1,0 +1,11 @@
+Accuracy: 0.8833
+
+              precision    recall  f1-score   support
+
+     healthy       0.88      0.89      0.88        90
+      wilted       0.89      0.88      0.88        90
+
+    accuracy                           0.88       180
+   macro avg       0.88      0.88      0.88       180
+weighted avg       0.88      0.88      0.88       180
+

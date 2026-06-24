@@ -1,0 +1,56 @@
+Accuracy: 0.9133
+
+                                            precision    recall  f1-score   support
+
+     African Violet (Saintpaulia ionantha)       0.98      0.96      0.97        57
+                                 Aloe Vera       0.93      0.93      0.93        54
+          Anthurium (Anthurium andraeanum)       0.90      0.91      0.91        82
+             Areca Palm (Dypsis lutescens)       0.95      0.88      0.92        43
+       Asparagus Fern (Asparagus setaceus)       1.00      0.87      0.93        39
+                    Begonia (Begonia spp.)       0.80      0.62      0.70        45
+     Bird of Paradise (Strelitzia reginae)       0.90      0.96      0.93        28
+         Birds Nest Fern (Asplenium nidus)       0.97      0.96      0.96        69
+        Boston Fern (Nephrolepis exaltata)       0.89      0.96      0.93        53
+                                  Calathea       0.85      0.81      0.83        63
+      Cast Iron Plant (Aspidistra elatior)       0.85      0.94      0.89        48
+ Chinese Money Plant (Pilea peperomioides)       0.96      0.99      0.97        74
+             Chinese evergreen (Aglaonema)       0.87      0.82      0.85       107
+Christmas Cactus (Schlumbergera bridgesii)       0.95      0.91      0.93        65
+                             Chrysanthemum       1.00      0.96      0.98        46
+                                 Ctenanthe       0.83      0.91      0.87        66
+                Daffodils (Narcissus spp.)       0.90      0.97      0.93        66
+                                  Dracaena       0.69      0.91      0.79        55
+            Dumb Cane (Dieffenbachia spp.)       0.91      0.89      0.90       115
+              Elephant Ear (Alocasia spp.)       0.88      0.84      0.86        82
+                English Ivy (Hedera helix)       1.00      0.82      0.90        51
+          Hyacinth (Hyacinthus orientalis)       0.99      0.99      0.99        68
+    Iron Cross begonia (Begonia masoniana)       0.98      0.95      0.97        60
+               Jade plant (Crassula ovata)       0.80      0.97      0.88        67
+                                 Kalanchoe       0.91      0.62      0.74        34
+                     Lilium (Hemerocallis)       0.92      0.95      0.94        88
+  Lily of the valley (Convallaria majalis)       0.91      0.98      0.94        81
+             Money Tree (Pachira aquatica)       0.89      0.91      0.90        75
+   Monstera Deliciosa (Monstera deliciosa)       0.91      0.93      0.92       113
+                                    Orchid       0.84      0.88      0.86        42
+         Parlor Palm (Chamaedorea elegans)       0.94      0.96      0.95        75
+                                Peace lily       0.93      0.97      0.95        91
+        Poinsettia (Euphorbia pulcherrima)       1.00      0.93      0.96        58
+ Polka Dot Plant (Hypoestes phyllostachya)       0.92      0.96      0.94        71
+      Ponytail Palm (Beaucarnea recurvata)       0.93      0.93      0.93        44
+                         Pothos (Ivy arum)       0.80      0.87      0.84        47
+         Prayer Plant (Maranta leuconeura)       0.96      0.89      0.92        90
+   Rattlesnake Plant (Calathea lancifolia)       0.97      0.97      0.97        64
+             Rubber Plant (Ficus elastica)       0.94      0.94      0.94        48
+                Sago Palm (Cycas revoluta)       1.00      0.97      0.99        36
+                                Schefflera       0.93      0.85      0.89        60
+                  Snake plant (Sanseviera)       0.92      0.92      0.92        74
+                              Tradescantia       0.89      0.96      0.92        70
+                                     Tulip       0.97      0.93      0.95        71
+                             Venus Flytrap       0.97      0.92      0.95        39
+                                     Yucca       0.80      0.40      0.53        10
+         ZZ Plant (Zamioculcas zamiifolia)       0.92      0.94      0.93        70
+
+                                  accuracy                           0.91      2954
+                                 macro avg       0.91      0.90      0.90      2954
+                              weighted avg       0.92      0.91      0.91      2954
+

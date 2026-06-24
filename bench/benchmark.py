@@ -5,11 +5,19 @@ Pro Lauf entsteht unter ``results/<backbone>/``:
     training_log.txt         menschenlesbares Trainingsprotokoll
     classification_report.txt sklearn-Report pro Klasse
     confusion_matrix.png     normalisierte Confusion Matrix
-Der Checkpoint landet unter ``models/<backbone>.pth``.
+Der Checkpoint landet unter ``models/<run-name>.pth``.
+
+Ohne ``--run-name`` wird der Backbone-Name als Run-Name verwendet (damit bleiben
+die bestehenden PlantVillage-Laeufe rueckwaertskompatibel). Mit ``--data-root``,
+``--test-dir``, ``--run-name`` und ``--task`` laesst sich das Harness auf
+beliebige ImageFolder-Datensaetze (z.B. Zimmerpflanzen) anwenden.
 
 Aufruf:
     python -m bench.benchmark --backbone resnet18
     python -m bench.benchmark --backbone efficientnet_b0 --epochs-head 2 --epochs-finetune 3
+    python -m bench.benchmark --backbone resnet18 --data-root data/houseplants \
+        --run-name houseplant_species --task houseplant_species \
+        --dataset-name "House Plant Species" --test-dir data/houseplants_test
 """
 from __future__ import annotations
 
@@ -35,11 +43,21 @@ from src.model import (
 )
 from src.train import get_device, run_epoch
 
-# Datenpfad mit train/valid (verschachtelt im Kaggle-Download).
-DATA_ROOT = "data/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)"
-TEST_DIR = "data/test/test"
+# PlantVillage-Defaults (Rueckwaertskompatibilitaet). Datenpfad mit train/valid
+# (verschachtelt im Kaggle-Download).
+DEFAULT_DATA_ROOT = "data/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)"
+DEFAULT_TEST_DIR = "data/test/test"
+DEFAULT_TASK = "crop_disease"
+DEFAULT_DATASET_NAME = "PlantVillage (New Plant Diseases, augmentiert)"
+
+# Anhaengendes Verlaufs-Log: jeder Lauf wird hier dauerhaft festgehalten, auch
+# wenn results/<run-name>/ beim erneuten Lauf ueberschrieben wird. So bleibt die
+# Historie (inkl. Hyperparameter) ueber alle Experimente hinweg nachvollziehbar.
+HISTORY_PATH = "results/history.jsonl"
 
 # Dateinamen-Praefix der unabhaengigen Testbilder -> echte Klasse (Ground Truth).
+# Gilt nur fuer den PlantVillage-Testordner; andere Datensaetze liefern hier None
+# (Vorhersagen ohne Ground Truth).
 TEST_PREFIX_TO_CLASS = {
     "AppleCedarRust": "Apple___Cedar_apple_rust",
     "AppleScab": "Apple___Apple_scab",
@@ -194,8 +212,12 @@ def measure_inference_speed(model, device, batch_size=32, n_batches=20, warmup=3
 
 
 @torch.no_grad()
-def test_image_predictions(model, class_names, device):
-    """Vorhersage auf den unabhaengigen Testbildern + Abgleich mit Dateinamen."""
+def test_image_predictions(model, class_names, device, test_dir):
+    """Vorhersage auf den unabhaengigen Testbildern + Abgleich mit Dateinamen.
+
+    Die Ground Truth wird nur fuer den PlantVillage-Testordner aus dem Dateinamen
+    abgeleitet; bei anderen Datensaetzen bleibt ``true``/``correct`` None.
+    """
     import torch.nn.functional as F
     from PIL import Image
 
@@ -203,11 +225,12 @@ def test_image_predictions(model, class_names, device):
     model.eval()
     preds = []
     n_correct = n_labeled = 0
-    if not os.path.isdir(TEST_DIR):
-        return {"n": 0, "predictions": []}
+    if not test_dir or not os.path.isdir(test_dir):
+        return {"n": 0, "n_labeled": 0, "n_correct": 0,
+                "accuracy": None, "predictions": []}
 
-    for name in sorted(os.listdir(TEST_DIR)):
-        path = os.path.join(TEST_DIR, name)
+    for name in sorted(os.listdir(test_dir)):
+        path = os.path.join(test_dir, name)
         if not os.path.isfile(path):
             continue
         image = Image.open(path).convert("RGB")
@@ -240,15 +263,54 @@ def test_image_predictions(model, class_names, device):
     }
 
 
-def run(backbone, epochs_head, epochs_finetune, batch_size, lr_head, lr_finetune):
-    device = get_device()
-    print(f"=== Benchmark {backbone} === Device: {device}")
+def append_history(metrics):
+    """Haengt eine kompakte Zusammenfassung des Laufs an HISTORY_PATH an.
 
-    out_dir = os.path.join("results", backbone)
+    Eine Zeile JSON pro Lauf (append-only), damit der zeitliche Verlauf und der
+    Effekt von Modell-/Hyperparameter-Aenderungen erhalten bleibt.
+    """
+    c = metrics["config"]
+    ev = metrics["evaluation"]
+    ti = metrics["test_images"]
+    row = {
+        "timestamp": metrics["timestamp"],
+        "run_name": metrics["run_name"],
+        "task": metrics["task"],
+        "dataset_name": metrics["dataset_name"],
+        "backbone": metrics["backbone"],
+        "num_classes": metrics["dataset"]["num_classes"],
+        "epochs_head": c["epochs_head"],
+        "epochs_finetune": c["epochs_finetune"],
+        "batch_size": c["batch_size"],
+        "lr_head": c["lr_head"],
+        "lr_finetune": c["lr_finetune"],
+        "weighted_sampler": c.get("weighted_sampler", False),
+        "val_accuracy": ev["accuracy"],
+        "macro_f1": ev["macro_avg"]["f1"],
+        "train_seconds": metrics["training"]["total_seconds"],
+        "ms_per_image": metrics["inference_speed"]["ms_per_image"],
+        "test_n_correct": ti.get("n_correct"),
+        "test_n_labeled": ti.get("n_labeled"),
+    }
+    os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
+    with open(HISTORY_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def run(backbone, epochs_head, epochs_finetune, batch_size, lr_head, lr_finetune,
+        data_root=DEFAULT_DATA_ROOT, test_dir=DEFAULT_TEST_DIR, run_name=None,
+        task=DEFAULT_TASK, dataset_name=DEFAULT_DATASET_NAME, weighted_sampler=False):
+    run_name = run_name or backbone
+    device = get_device()
+    print(f"=== Benchmark {run_name} ({backbone}, task={task}, "
+          f"weighted_sampler={weighted_sampler}) === Device: {device}")
+
+    out_dir = os.path.join("results", run_name)
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs("models", exist_ok=True)
 
-    train_loader, val_loader, class_names = create_dataloaders(DATA_ROOT, batch_size=batch_size)
+    train_loader, val_loader, class_names = create_dataloaders(
+        data_root, batch_size=batch_size, weighted_sampler=weighted_sampler)
     print(f"{len(class_names)} Klassen | train={len(train_loader.dataset)} "
           f"val={len(val_loader.dataset)}")
 
@@ -258,7 +320,7 @@ def run(backbone, epochs_head, epochs_finetune, batch_size, lr_head, lr_finetune
         epochs_head, epochs_finetune, lr_head, lr_finetune, log_lines,
     )
 
-    ckpt_path = os.path.join("models", f"{backbone}.pth")
+    ckpt_path = os.path.join("models", f"{run_name}.pth")
     save_checkpoint(ckpt_path, model, class_names, backbone)
 
     print("Evaluiere auf Validierungssplit ...")
@@ -270,19 +332,24 @@ def run(backbone, epochs_head, epochs_finetune, batch_size, lr_head, lr_finetune
     print(f"  {speed['images_per_sec']:.0f} Bilder/s ({speed['ms_per_image']:.2f} ms/Bild)")
 
     print("Teste unabhaengige Testbilder ...")
-    test_res = test_image_predictions(model, class_names, device)
-    if test_res["n_labeled"]:
+    test_res = test_image_predictions(model, class_names, device, test_dir)
+    if test_res.get("n_labeled"):
         print(f"  {test_res['n_correct']}/{test_res['n_labeled']} korrekt")
+    elif test_res["n"]:
+        print(f"  {test_res['n']} Vorhersagen (keine Ground Truth)")
 
     size_mb = os.path.getsize(ckpt_path) / 1024 / 1024
     metrics = {
+        "run_name": run_name,
+        "task": task,
+        "dataset_name": dataset_name,
         "backbone": backbone,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "device": str(device),
         "config": {
             "epochs_head": epochs_head, "epochs_finetune": epochs_finetune,
             "batch_size": batch_size, "lr_head": lr_head, "lr_finetune": lr_finetune,
-            "image_size": 224,
+            "image_size": 224, "weighted_sampler": weighted_sampler,
         },
         "dataset": {
             "num_classes": len(class_names),
@@ -302,7 +369,9 @@ def run(backbone, epochs_head, epochs_finetune, batch_size, lr_head, lr_finetune
     with open(os.path.join(out_dir, "training_log.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(log_lines) + "\n")
 
-    print(f"Ergebnisse geschrieben nach {out_dir}/")
+    append_history(metrics)
+
+    print(f"Ergebnisse geschrieben nach {out_dir}/ (Verlauf: {HISTORY_PATH})")
     print("BENCHMARK_OK")
     return metrics
 
@@ -315,9 +384,25 @@ def main():
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr-head", type=float, default=1e-3)
     p.add_argument("--lr-finetune", type=float, default=1e-4)
+    p.add_argument("--data-root", default=DEFAULT_DATA_ROOT,
+                   help="Wurzelordner des Datensatzes (train/valid oder Single-Folder)")
+    p.add_argument("--test-dir", default=DEFAULT_TEST_DIR,
+                   help="Ordner mit unabhaengigen Testbildern (optional)")
+    p.add_argument("--run-name", default=None,
+                   help="Name fuer results/<run-name>/ und models/<run-name>.pth "
+                        "(Default: Backbone-Name)")
+    p.add_argument("--task", default=DEFAULT_TASK,
+                   help="Aufgaben-/Gruppen-Label fuer den Vergleich (z.B. houseplant_species)")
+    p.add_argument("--dataset-name", default=DEFAULT_DATASET_NAME,
+                   help="Anzeigename des Datensatzes fuer den Report")
+    p.add_argument("--weighted-sampler", action="store_true",
+                   help="WeightedRandomSampler gegen Klassen-Ungleichgewicht nutzen")
     args = p.parse_args()
     run(args.backbone, args.epochs_head, args.epochs_finetune,
-        args.batch_size, args.lr_head, args.lr_finetune)
+        args.batch_size, args.lr_head, args.lr_finetune,
+        data_root=args.data_root, test_dir=args.test_dir, run_name=args.run_name,
+        task=args.task, dataset_name=args.dataset_name,
+        weighted_sampler=args.weighted_sampler)
 
 
 if __name__ == "__main__":

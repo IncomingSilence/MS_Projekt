@@ -1,0 +1,125 @@
+{
+  "run_name": "houseplant_health",
+  "task": "houseplant_health",
+  "dataset_name": "Healthy vs. Wilted Houseplants",
+  "backbone": "resnet18",
+  "timestamp": "2026-06-24T02:19:33",
+  "device": "privateuseone:0",
+  "config": {
+    "epochs_head": 2,
+    "epochs_finetune": 3,
+    "batch_size": 32,
+    "lr_head": 0.001,
+    "lr_finetune": 0.0001,
+    "image_size": 224,
+    "weighted_sampler": false
+  },
+  "dataset": {
+    "num_classes": 2,
+    "n_train": 724,
+    "n_val": 180
+  },
+  "model": {
+    "total_params": 11177538,
+    "head_trainable_params": 1026,
+    "checkpoint": "models/houseplant_health.pth",
+    "size_mb": 64.57074737548828
+  },
+  "training": {
+    "phases": [
+      {
+        "name": "feature_extraction",
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 0.6646434411159536,
+            "train_acc": 0.6256906077348067,
+            "val_loss": 0.5460411442650689,
+            "val_acc": 0.7388888888888889,
+            "seconds": 30.387930393218994
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.5078426671950198,
+            "train_acc": 0.7513812154696132,
+            "val_loss": 0.45809241202142503,
+            "val_acc": 0.8055555555555556,
+            "seconds": 29.0349063873291
+          }
+        ]
+      },
+      {
+        "name": "fine_tuning",
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 0.36789415175743523,
+            "train_acc": 0.8342541436464088,
+            "val_loss": 0.31612095965279474,
+            "val_acc": 0.8277777777777777,
+            "seconds": 30.23765230178833
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.2212910121152414,
+            "train_acc": 0.9157458563535912,
+            "val_loss": 0.28443034556176927,
+            "val_acc": 0.8833333333333333,
+            "seconds": 30.54096531867981
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.1464961737970621,
+            "train_acc": 0.9530386740331491,
+            "val_loss": 0.2950695329242282,
+            "val_acc": 0.8555555555555555,
+            "seconds": 30.22352886199951
+          }
+        ]
+      }
+    ],
+    "total_seconds": 150.4591498374939,
+    "best_val_acc": 0.8833333333333333
+  },
+  "evaluation": {
+    "accuracy": 0.8833333333333333,
+    "macro_avg": {
+      "precision": 0.8833806642795407,
+      "recall": 0.8833333333333333,
+      "f1": 0.883329732399148
+    },
+    "weighted_avg": {
+      "precision": 0.8833806642795408,
+      "recall": 0.8833333333333333,
+      "f1": 0.8833297323991481
+    },
+    "per_class": {
+      "healthy": {
+        "precision": 0.8791208791208791,
+        "recall": 0.8888888888888888,
+        "f1": 0.8839779005524862,
+        "support": 90.0
+      },
+      "wilted": {
+        "precision": 0.8876404494382022,
+        "recall": 0.8777777777777778,
+        "f1": 0.88268156424581,
+        "support": 90.0
+      }
+    },
+    "confusion_matrix_png": "results/houseplant_health/confusion_matrix.png"
+  },
+  "inference_speed": {
+    "device": "privateuseone:0",
+    "batch_size": 32,
+    "images_per_sec": 1849.5149522903328,
+    "ms_per_image": 0.5406823009252548
+  },
+  "test_images": {
+    "n": 0,
+    "n_labeled": 0,
+    "n_correct": 0,
+    "accuracy": null,
+    "predictions": []
+  }
+}

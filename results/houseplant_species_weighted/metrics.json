@@ -1,0 +1,414 @@
+{
+  "run_name": "houseplant_species_weighted",
+  "task": "houseplant_species",
+  "dataset_name": "House Plant Species (47 Arten)",
+  "backbone": "resnet18",
+  "timestamp": "2026-06-24T02:33:11",
+  "device": "privateuseone:0",
+  "config": {
+    "epochs_head": 2,
+    "epochs_finetune": 3,
+    "batch_size": 32,
+    "lr_head": 0.001,
+    "lr_finetune": 0.0001,
+    "image_size": 224,
+    "weighted_sampler": true
+  },
+  "dataset": {
+    "num_classes": 47,
+    "n_train": 11820,
+    "n_val": 2954
+  },
+  "model": {
+    "total_params": 11200623,
+    "head_trainable_params": 24111,
+    "checkpoint": "models/houseplant_species_weighted.pth",
+    "size_mb": 64.69847106933594
+  },
+  "training": {
+    "phases": [
+      {
+        "name": "feature_extraction",
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 2.2995481432593614,
+            "train_acc": 0.4488155668358714,
+            "val_loss": 1.338974114600758,
+            "val_acc": 0.6580907244414353,
+            "seconds": 142.603129863739
+          },
+          {
+            "epoch": 2,
+            "train_loss": 1.3368768265202968,
+            "train_acc": 0.6580372250423012,
+            "val_loss": 1.0990986646472722,
+            "val_acc": 0.6949898442789438,
+            "seconds": 144.11761713027954
+          }
+        ]
+      },
+      {
+        "name": "fine_tuning",
+        "epochs": [
+          {
+            "epoch": 1,
+            "train_loss": 0.5957440516266927,
+            "train_acc": 0.8295262267343486,
+            "val_loss": 0.4919179888516564,
+            "val_acc": 0.8557887610020312,
+            "seconds": 146.55796813964844
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.29883630736628564,
+            "train_acc": 0.9181049069373942,
+            "val_loss": 0.36782553759715647,
+            "val_acc": 0.8913337846987136,
+            "seconds": 149.45884346961975
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.20164173275686156,
+            "train_acc": 0.9458544839255499,
+            "val_loss": 0.32581061416368023,
+            "val_acc": 0.9092755585646581,
+            "seconds": 148.04300618171692
+          }
+        ]
+      }
+    ],
+    "total_seconds": 730.8229942321777,
+    "best_val_acc": 0.9092755585646581
+  },
+  "evaluation": {
+    "accuracy": 0.9092755585646581,
+    "macro_avg": {
+      "precision": 0.907300698560898,
+      "recall": 0.9051715931482098,
+      "f1": 0.9037638128416833
+    },
+    "weighted_avg": {
+      "precision": 0.91378421632167,
+      "recall": 0.9092755585646581,
+      "f1": 0.9094094785014402
+    },
+    "per_class": {
+      "African Violet (Saintpaulia ionantha)": {
+        "precision": 0.9298245614035088,
+        "recall": 0.9298245614035088,
+        "f1": 0.9298245614035088,
+        "support": 57.0
+      },
+      "Aloe Vera": {
+        "precision": 0.8823529411764706,
+        "recall": 0.8333333333333334,
+        "f1": 0.8571428571428571,
+        "support": 54.0
+      },
+      "Anthurium (Anthurium andraeanum)": {
+        "precision": 0.9230769230769231,
+        "recall": 0.8780487804878049,
+        "f1": 0.9,
+        "support": 82.0
+      },
+      "Areca Palm (Dypsis lutescens)": {
+        "precision": 0.9111111111111111,
+        "recall": 0.9534883720930233,
+        "f1": 0.9318181818181818,
+        "support": 43.0
+      },
+      "Asparagus Fern (Asparagus setaceus)": {
+        "precision": 1.0,
+        "recall": 0.8974358974358975,
+        "f1": 0.9459459459459459,
+        "support": 39.0
+      },
+      "Begonia (Begonia spp.)": {
+        "precision": 0.8055555555555556,
+        "recall": 0.6444444444444445,
+        "f1": 0.7160493827160493,
+        "support": 45.0
+      },
+      "Bird of Paradise (Strelitzia reginae)": {
+        "precision": 0.9,
+        "recall": 0.9642857142857143,
+        "f1": 0.9310344827586207,
+        "support": 28.0
+      },
+      "Birds Nest Fern (Asplenium nidus)": {
+        "precision": 0.9692307692307692,
+        "recall": 0.9130434782608695,
+        "f1": 0.9402985074626866,
+        "support": 69.0
+      },
+      "Boston Fern (Nephrolepis exaltata)": {
+        "precision": 0.8928571428571429,
+        "recall": 0.9433962264150944,
+        "f1": 0.9174311926605505,
+        "support": 53.0
+      },
+      "Calathea": {
+        "precision": 0.8059701492537313,
+        "recall": 0.8571428571428571,
+        "f1": 0.8307692307692308,
+        "support": 63.0
+      },
+      "Cast Iron Plant (Aspidistra elatior)": {
+        "precision": 0.8695652173913043,
+        "recall": 0.8333333333333334,
+        "f1": 0.851063829787234,
+        "support": 48.0
+      },
+      "Chinese Money Plant (Pilea peperomioides)": {
+        "precision": 0.972972972972973,
+        "recall": 0.972972972972973,
+        "f1": 0.972972972972973,
+        "support": 74.0
+      },
+      "Chinese evergreen (Aglaonema)": {
+        "precision": 0.9130434782608695,
+        "recall": 0.7850467289719626,
+        "f1": 0.8442211055276382,
+        "support": 107.0
+      },
+      "Christmas Cactus (Schlumbergera bridgesii)": {
+        "precision": 0.9508196721311475,
+        "recall": 0.8923076923076924,
+        "f1": 0.9206349206349206,
+        "support": 65.0
+      },
+      "Chrysanthemum": {
+        "precision": 1.0,
+        "recall": 0.9565217391304348,
+        "f1": 0.9777777777777777,
+        "support": 46.0
+      },
+      "Ctenanthe": {
+        "precision": 0.8157894736842105,
+        "recall": 0.9393939393939394,
+        "f1": 0.8732394366197183,
+        "support": 66.0
+      },
+      "Daffodils (Narcissus spp.)": {
+        "precision": 0.9411764705882353,
+        "recall": 0.9696969696969697,
+        "f1": 0.9552238805970149,
+        "support": 66.0
+      },
+      "Dracaena": {
+        "precision": 0.7,
+        "recall": 0.8909090909090909,
+        "f1": 0.784,
+        "support": 55.0
+      },
+      "Dumb Cane (Dieffenbachia spp.)": {
+        "precision": 0.9009009009009009,
+        "recall": 0.8695652173913043,
+        "f1": 0.8849557522123894,
+        "support": 115.0
+      },
+      "Elephant Ear (Alocasia spp.)": {
+        "precision": 0.8214285714285714,
+        "recall": 0.8414634146341463,
+        "f1": 0.8313253012048193,
+        "support": 82.0
+      },
+      "English Ivy (Hedera helix)": {
+        "precision": 1.0,
+        "recall": 0.7450980392156863,
+        "f1": 0.8539325842696629,
+        "support": 51.0
+      },
+      "Hyacinth (Hyacinthus orientalis)": {
+        "precision": 0.9705882352941176,
+        "recall": 0.9705882352941176,
+        "f1": 0.9705882352941176,
+        "support": 68.0
+      },
+      "Iron Cross begonia (Begonia masoniana)": {
+        "precision": 1.0,
+        "recall": 0.9666666666666667,
+        "f1": 0.9830508474576272,
+        "support": 60.0
+      },
+      "Jade plant (Crassula ovata)": {
+        "precision": 0.8783783783783784,
+        "recall": 0.9701492537313433,
+        "f1": 0.9219858156028369,
+        "support": 67.0
+      },
+      "Kalanchoe": {
+        "precision": 0.96,
+        "recall": 0.7058823529411765,
+        "f1": 0.8135593220338984,
+        "support": 34.0
+      },
+      "Lilium (Hemerocallis)": {
+        "precision": 0.9148936170212766,
+        "recall": 0.9772727272727273,
+        "f1": 0.945054945054945,
+        "support": 88.0
+      },
+      "Lily of the valley (Convallaria majalis)": {
+        "precision": 0.975,
+        "recall": 0.9629629629629629,
+        "f1": 0.968944099378882,
+        "support": 81.0
+      },
+      "Money Tree (Pachira aquatica)": {
+        "precision": 0.9142857142857143,
+        "recall": 0.8533333333333334,
+        "f1": 0.8827586206896552,
+        "support": 75.0
+      },
+      "Monstera Deliciosa (Monstera deliciosa)": {
+        "precision": 0.9626168224299065,
+        "recall": 0.911504424778761,
+        "f1": 0.9363636363636364,
+        "support": 113.0
+      },
+      "Orchid": {
+        "precision": 0.8297872340425532,
+        "recall": 0.9285714285714286,
+        "f1": 0.8764044943820225,
+        "support": 42.0
+      },
+      "Parlor Palm (Chamaedorea elegans)": {
+        "precision": 0.9358974358974359,
+        "recall": 0.9733333333333334,
+        "f1": 0.954248366013072,
+        "support": 75.0
+      },
+      "Peace lily": {
+        "precision": 0.9032258064516129,
+        "recall": 0.9230769230769231,
+        "f1": 0.9130434782608695,
+        "support": 91.0
+      },
+      "Poinsettia (Euphorbia pulcherrima)": {
+        "precision": 1.0,
+        "recall": 0.9310344827586207,
+        "f1": 0.9642857142857143,
+        "support": 58.0
+      },
+      "Polka Dot Plant (Hypoestes phyllostachya)": {
+        "precision": 0.9315068493150684,
+        "recall": 0.9577464788732394,
+        "f1": 0.9444444444444444,
+        "support": 71.0
+      },
+      "Ponytail Palm (Beaucarnea recurvata)": {
+        "precision": 0.9545454545454546,
+        "recall": 0.9545454545454546,
+        "f1": 0.9545454545454546,
+        "support": 44.0
+      },
+      "Pothos (Ivy arum)": {
+        "precision": 0.7049180327868853,
+        "recall": 0.9148936170212766,
+        "f1": 0.7962962962962963,
+        "support": 47.0
+      },
+      "Prayer Plant (Maranta leuconeura)": {
+        "precision": 0.9876543209876543,
+        "recall": 0.8888888888888888,
+        "f1": 0.935672514619883,
+        "support": 90.0
+      },
+      "Rattlesnake Plant (Calathea lancifolia)": {
+        "precision": 0.984375,
+        "recall": 0.984375,
+        "f1": 0.984375,
+        "support": 64.0
+      },
+      "Rubber Plant (Ficus elastica)": {
+        "precision": 0.9583333333333334,
+        "recall": 0.9583333333333334,
+        "f1": 0.9583333333333334,
+        "support": 48.0
+      },
+      "Sago Palm (Cycas revoluta)": {
+        "precision": 0.9210526315789473,
+        "recall": 0.9722222222222222,
+        "f1": 0.9459459459459459,
+        "support": 36.0
+      },
+      "Schefflera": {
+        "precision": 0.8524590163934426,
+        "recall": 0.8666666666666667,
+        "f1": 0.859504132231405,
+        "support": 60.0
+      },
+      "Snake plant (Sanseviera)": {
+        "precision": 0.8255813953488372,
+        "recall": 0.9594594594594594,
+        "f1": 0.8875,
+        "support": 74.0
+      },
+      "Tradescantia": {
+        "precision": 0.8481012658227848,
+        "recall": 0.9571428571428572,
+        "f1": 0.8993288590604027,
+        "support": 70.0
+      },
+      "Tulip": {
+        "precision": 0.9436619718309859,
+        "recall": 0.9436619718309859,
+        "f1": 0.9436619718309859,
+        "support": 71.0
+      },
+      "Venus Flytrap": {
+        "precision": 0.975,
+        "recall": 1.0,
+        "f1": 0.9873417721518988,
+        "support": 39.0
+      },
+      "Yucca": {
+        "precision": 0.6363636363636364,
+        "recall": 0.7,
+        "f1": 0.6666666666666666,
+        "support": 10.0
+      },
+      "ZZ Plant (Zamioculcas zamiifolia)": {
+        "precision": 0.9692307692307692,
+        "recall": 0.9,
+        "f1": 0.9333333333333333,
+        "support": 70.0
+      }
+    },
+    "confusion_matrix_png": "results/houseplant_species_weighted/confusion_matrix.png"
+  },
+  "inference_speed": {
+    "device": "privateuseone:0",
+    "batch_size": 32,
+    "images_per_sec": 1846.9355240434563,
+    "ms_per_image": 0.541437417268753
+  },
+  "test_images": {
+    "n": 2,
+    "n_labeled": 0,
+    "n_correct": 0,
+    "accuracy": null,
+    "predictions": [
+      {
+        "image": "zimerpflanze_kevin.jpeg",
+        "true": null,
+        "pred": "Snake plant (Sanseviera)",
+        "plant": "Snake plant (Sanseviera)",
+        "condition": "unknown",
+        "confidence": 0.9788702726364136,
+        "correct": null
+      },
+      {
+        "image": "zimmerpflanze_kevin_1.jpeg",
+        "true": null,
+        "pred": "Dracaena",
+        "plant": "Dracaena",
+        "condition": "unknown",
+        "confidence": 0.8097783923149109,
+        "correct": null
+      }
+    ]
+  }
+}
