@@ -1,0 +1,594 @@
+\documentclass[11pt,a4paper]{article}
+
+% ----------------------------------------------------------------------------
+% Protokoll zur Projektarbeit "Maschinelles Sehen"
+% Pflanzen-, Krankheits- und Zimmerpflanzenerkennung via Transfer Learning
+% ----------------------------------------------------------------------------
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{textcomp}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% Farben fuer Code-Listings
+\definecolor{codebg}{rgb}{0.96,0.96,0.96}
+\definecolor{codekw}{rgb}{0.13,0.29,0.53}
+\definecolor{codecm}{rgb}{0.40,0.55,0.40}
+\definecolor{codestr}{rgb}{0.58,0.20,0.20}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape,
+  stringstyle=\color{codestr},
+  numbers=left, numberstyle=\tiny\color{gray}, numbersep=8pt,
+  frame=single, rulecolor=\color{gray!40},
+  breaklines=true, showstringspaces=false,
+  language=Python, captionpos=b, xleftmargin=1.5em,
+}
+
+% Hilfsmakro: Bild nur einbinden, wenn vorhanden (Protokoll kompiliert sonst trotzdem)
+\newcommand{\maybegraphic}[2]{%
+  \IfFileExists{#1}{\includegraphics[#2]{#1}}{%
+    \fbox{\parbox[c][3cm][c]{0.6\linewidth}{\centering\itshape Abbildung nicht gefunden:\\\texttt{#1}}}}}
+
+\title{\textbf{Pflanzen-, Krankheits- und Zimmerpflanzenerkennung\\mit Transfer Learning}\\[0.4em]
+\large Protokoll zur Projektarbeit im Modul \emph{Maschinelles Sehen}}
+\author{Kevin Ruppaner}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+In dieser Projektarbeit wird ein vortrainiertes neuronales Netz (CNN) mittels
+\emph{Transfer Learning} darauf angepasst, Pflanzen auf Fotos zu erkennen. Es
+entstanden drei Aufgabenstellungen: (1)~die Erkennung von \textbf{Nutzpflanzen
+und deren Krankheiten} aus Blattfotos (38~Klassen, PlantVillage), (2)~die
+Bestimmung der \textbf{Zimmerpflanzen-Art} (47~Klassen) und (3)~eine binäre
+\textbf{Zustandsbewertung} (gesund vs.\ welk). Auf den Validierungsdaten werden
+sehr hohe Genauigkeiten erreicht (Krankheiten bis 99{,}7\,\%, Arten 91{,}3\,\%).
+Ein abschließender Test mit zehn \emph{unabhängigen} Fotos aus dem Internet
+ordnet die Ergebnisse ehrlich ein: hier wurden 8 von 10 Arten korrekt erkannt.
+Das Protokoll erläutert Idee, Aufbau, Methodik und Ergebnisse und diskutiert
+Grenzen sowie konkrete Verbesserungsmöglichkeiten.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% ============================================================================
+\section{Idee und Zielsetzung}
+% ============================================================================
+
+\subsection{Motivation}
+Pflanzenkrankheiten früh zu erkennen ist in der Landwirtschaft wirtschaftlich
+bedeutsam, und auch im Hobbybereich (Zimmerpflanzen) ist die Frage „Welche
+Pflanze ist das und geht es ihr gut?“ alltagsnah. Beide Probleme lassen sich als
+\textbf{Bildklassifikation} formulieren: Eingabe ist ein Foto, Ausgabe ist eine
+Klassenbezeichnung. Genau dafür sind \emph{Convolutional Neural Networks} (CNNs)
+das Standardwerkzeug des maschinellen Sehens.
+
+\subsection{Kernidee: Transfer Learning}
+Ein CNN von Grund auf zu trainieren benötigt sehr viele Bilder und viel
+Rechenzeit. Stattdessen nutzen wir \textbf{Transfer Learning}: Wir nehmen ein
+Netz, das bereits auf dem großen Bilddatensatz \emph{ImageNet}
+(1{,}2~Mio.\ Bilder, 1000~Klassen) trainiert wurde. Dieses Netz hat allgemeine
+visuelle Merkmale (Kanten, Texturen, Formen) bereits gelernt. Wir tauschen nur
+den letzten Klassifikationskopf aus und passen das Netz an unsere Pflanzendaten
+an. So genügen vergleichsweise wenige Bilder und Minuten statt Tage Trainingszeit
+-- ideal für eine Projektarbeit.
+
+\subsection{Lernziel der Arbeit}
+Da es sich um eine Lern\-/Übungsarbeit handelt, liegt der Fokus nicht auf einem
+produktionsreifen System, sondern auf dem \emph{Verständnis} der Pipeline:
+Datenaufbereitung $\rightarrow$ Modellaufbau $\rightarrow$ Zwei-Phasen-Training
+$\rightarrow$ Evaluation $\rightarrow$ Inferenz auf neuen Bildern, sowie dem
+ehrlichen Einordnen der Ergebnisse.
+
+% ============================================================================
+\section{Theoretischer Hintergrund}
+% ============================================================================
+
+\subsection{Convolutional Neural Networks (CNN)}
+Ein CNN verarbeitet ein Bild über mehrere \emph{Faltungsschichten}
+(Convolutions), die lokale Muster erkennen, gefolgt von Pooling-Schichten, die
+die Auflösung reduzieren. Frühe Schichten reagieren auf einfache Merkmale
+(Kanten), tiefere auf komplexe (z.\,B.\ Blattadern, Flecken). Am Ende steht ein
+\emph{Klassifikationskopf} (eine voll verbundene Schicht), der die gelernten
+Merkmale auf die Zielklassen abbildet.
+
+\subsection{Verwendete Backbones}
+Als „Backbone“ (Merkmalsextraktor) wurden zwei etablierte Architekturen aus
+\texttt{torchvision} verglichen:
+\begin{itemize}[nosep]
+  \item \textbf{ResNet18} -- 11{,}2~Mio.\ Parameter, schnell, einsteigerfreundlich
+        (Residual-Verbindungen erleichtern das Training tiefer Netze).
+  \item \textbf{EfficientNet-B0} -- 4{,}1~Mio.\ Parameter, modernere Architektur,
+        oft etwas genauer, aber langsamer im Training.
+\end{itemize}
+
+\subsection{Zwei-Phasen-Training}
+\label{sec:zweiphasen}
+Das Anpassen erfolgt in zwei Phasen -- ein in der Praxis bewährtes Vorgehen:
+\begin{enumerate}[nosep]
+  \item \textbf{Feature Extraction:} Das Backbone wird „eingefroren“
+        (Gewichte unveränderlich), nur der neue Kopf lernt. Das ist schnell und
+        stabil, weil nur wenige Parameter angepasst werden.
+  \item \textbf{Fine-Tuning:} Das gesamte Netz wird mit einer \emph{kleinen}
+        Lernrate weitertrainiert. So passen sich auch die tieferen Schichten
+        sanft an die Pflanzendomäne an, ohne das Vorwissen zu „vergessen“.
+\end{enumerate}
+Im Fine-Tuning kommt zusätzlich ein \emph{Cosine-Annealing}-Scheduler zum
+Einsatz, der die Lernrate über die Epochen langsam absenkt.
+
+\subsection{Normalisierung und Augmentierung}
+Die Bilder werden auf $224\times224$ skaliert und mit der ImageNet-Statistik
+normalisiert (Mittelwert/Std je Farbkanal) -- genau so, wie die vortrainierten
+Backbones es erwarten. Beim Training wird zusätzlich \emph{augmentiert}
+(zufälliges Zuschneiden, Spiegeln, Rotieren, Farbänderung), damit das Modell
+robuster wird und nicht einfach Trainingsbilder auswendig lernt.
+
+\subsection{Bewertungsmetriken: Precision, Recall, F1}
+\label{sec:metriken}
+Die \emph{Accuracy} (Anteil korrekter Vorhersagen) allein ist trügerisch, wenn
+die Klassen unausgewogen sind. Aussagekräftiger sind drei Maße, die sich aus den
+vier Grundfällen einer Klasse ableiten: richtig-positiv (TP), falsch-positiv
+(FP), falsch-negativ (FN), richtig-negativ (TN).
+\begin{align*}
+\text{Precision} &= \frac{TP}{TP + FP}
+   && \text{\small(Wie viele als X erkannte sind wirklich X?)}\\[2pt]
+\text{Recall} &= \frac{TP}{TP + FN}
+   && \text{\small(Wie viele echte X wurden gefunden?)}\\[2pt]
+\text{F1} &= 2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recall}}
+   && \text{\small(harmonisches Mittel beider)}
+\end{align*}
+Der \textbf{F1-Score} ist hoch nur dann, wenn \emph{beide} Werte hoch sind, und
+bestraft so einseitige Modelle. Über mehrere Klassen aggregiert man entweder als
+\textbf{Macro-F1} (ungewichteter Mittelwert -- jede Klasse zählt gleich, auch
+seltene) oder als \textbf{Weighted-F1} (nach Klassengröße gewichtet). In dieser
+Arbeit wird der Macro-F1 berichtet, weil er seltene Klassen nicht „verschwinden“
+lässt.
+
+\subsection{Konfusionsmatrix}
+\label{sec:konfusion}
+Eine \textbf{Konfusionsmatrix} (engl.\ \emph{confusion matrix}) stellt
+Verwechslungen tabellarisch dar: Zeilen sind die \emph{wahren} Klassen, Spalten
+die \emph{vorhergesagten}. Auf der Diagonale stehen die korrekten Fälle; alles
+außerhalb sind Verwechslungen. Eine „saubere“ Diagonale bedeutet ein gutes
+Modell, helle Nebenfelder zeigen, \emph{welche} Klassen verwechselt werden. Aus
+ihr lassen sich Precision und Recall direkt ablesen. Die Auswertung wird im
+Projekt von \texttt{src/evaluate.py} erzeugt:
+\begin{lstlisting}[caption={Konfusionsmatrix + Report (\texttt{src/evaluate.py})}]
+from sklearn.metrics import classification_report, confusion_matrix
+print(classification_report(y_true, y_pred, target_names=class_names))
+cm = confusion_matrix(y_true, y_pred)   # Zeilen=wahr, Spalten=vorhergesagt
+\end{lstlisting}
+
+% ============================================================================
+\section{Projektaufbau}
+% ============================================================================
+
+\subsection{Verzeichnisstruktur}
+Das Projekt trennt sauber zwischen wiederverwendbarem Quellcode (\texttt{src/}),
+einem Benchmark-Werkzeug (\texttt{bench/}), einer Demo-App (\texttt{app/}) und den
+Ergebnissen (\texttt{results/}, \texttt{models/}).
+
+\begin{lstlisting}[language=bash, numbers=none, caption={Projektstruktur (ohne Daten/Modelle)}]
+src/data.py             Transforms + DataLoader (ImageFolder), Label-Split
+src/model.py            build_model(): Backbone + neuer Kopf, Checkpoint speichern/laden
+src/train.py            Zwei-Phasen-Trainingsschleife, Geraeteerkennung (GPU/CPU)
+src/evaluate.py         Accuracy, Classification-Report, Confusion Matrix
+src/predict.py          Einzelbild-Vorhersage  -> (Pflanze, Krankheit, Konfidenz)
+src/predict_houseplant.py  Kombinierte Inferenz: Art-Modell -> Zustand-Modell
+bench/benchmark.py      Einheitlicher Trainings-/Evaluations-/Testlauf je Modell
+bench/compare.py        Fasst alle Laeufe zu results/BENCHMARK.md zusammen
+bench/plot.py           Diagramme (Accuracy vs. Zeit, Lernkurven)
+app/app.py              Gradio-Weboberflaeche (lokal, CPU)
+notebooks/              Trainings-Notebook
+\end{lstlisting}
+
+\subsection{Datenpipeline (\texttt{src/data.py})}
+Die Daten liegen als \emph{ImageFolder} vor: ein Unterordner pro Klasse, der
+Ordnername ist das Label. Zwei Layouts werden automatisch unterstützt:
+ein bereits geteilter Datensatz (\texttt{train/} + \texttt{valid/}) oder ein
+einzelner Ordner, der dann mit festem Zufalls-Seed in 80\,\% Training und
+20\,\% Validierung geteilt wird. Für das stark unausgewogene Arten-Dataset
+existiert optional ein \texttt{WeightedRandomSampler}, der seltene Klassen
+häufiger zieht.
+
+Ein kleiner, aber didaktisch schöner Kniff ist die Zerlegung des
+PlantVillage-Labels in Pflanze und Zustand:
+\begin{lstlisting}[caption={Label-Split in Pflanze und Krankheit (\texttt{src/data.py})}]
+def split_label(label: str) -> tuple[str, str]:
+    # "Tomato___Late_blight" -> ("Tomato", "Late blight")
+    if "___" in label:
+        plant, disease = label.split("___", 1)
+    else:
+        plant, disease = label, "unknown"
+    return plant.replace("_", " ").strip(), disease.replace("_", " ").strip()
+\end{lstlisting}
+
+\subsection{Modellaufbau (\texttt{src/model.py})}
+Die Funktion \texttt{build\_model()} lädt das gewählte Backbone mit
+ImageNet-Gewichten, friert es bei Bedarf ein und ersetzt den Kopf durch eine
+neue lineare Schicht mit \texttt{num\_classes} Ausgängen. Beim Speichern werden
+neben den Gewichten auch die Klassennamen und der Backbone-Typ im Checkpoint
+abgelegt, sodass die Inferenz das Modell vollständig rekonstruieren kann.
+
+\subsection{Geräteerkennung}
+Das Training erkennt die Hardware automatisch (CUDA / AMD-ROCm / DirectML /
+Apple-MPS / CPU). Lokal wurde auf einer \textbf{AMD Radeon RX 5700 XT} unter
+Windows via \texttt{torch-directml} trainiert; die Inferenz läuft auf der CPU.
+
+% ============================================================================
+\section{Datensätze}
+% ============================================================================
+
+\begin{table}[h]
+\centering
+\caption{Verwendete Datensätze}
+\label{tab:datasets}
+\small
+\begin{tabularx}{\linewidth}{@{}lXrr@{}}
+\toprule
+\textbf{Aufgabe} & \textbf{Datensatz} & \textbf{Klassen} & \textbf{Bilder} \\
+\midrule
+Krankheiten (crop\_disease)      & PlantVillage (New Plant Diseases, augm.) & 38 & 87.867 \\
+Zimmerpflanzen-Art               & House Plant Species                      & 47 & 14.774 \\
+Zustand (gesund/welk)            & Healthy vs.\ Wilted Houseplants          &  2 &    904 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent
+\textbf{Wichtige Einschränkung:} PlantVillage besteht aus \emph{Laboraufnahmen}
+(einzelnes Blatt, gleichmäßiger Hintergrund). Darauf werden sehr hohe
+Genauigkeiten erreicht, die aber nur eingeschränkt auf reale Feldfotos
+übertragbar sind (siehe Abschnitt~\ref{sec:diskussion}).
+
+\subsection{Zwei-Modell-Architektur für Zimmerpflanzen}
+Für Zimmerpflanzen existieren kaum Krankheitsdaten. Statt eines kombinierten
+\texttt{Art\_\_\_Zustand}-Klassifikators wurden daher bewusst \textbf{zwei
+getrennte Modelle} trainiert: ein datenreiches \emph{Art-Modell} (47~Arten) und
+ein datenarmes binäres \emph{Zustand-Modell}. Bei der Inferenz wird ein Foto
+nacheinander durch beide Modelle geschickt (siehe \texttt{predict\_houseplant.py}).
+
+% ============================================================================
+\section{Durchführung}
+% ============================================================================
+
+\subsection{Benchmark-Harness}
+Damit alle Modelle fair und reproduzierbar verglichen werden, kapselt
+\texttt{bench/benchmark.py} einen kompletten Lauf: Training (zwei Phasen),
+Evaluation (Accuracy, Per-Klassen-Report, Confusion Matrix), Messung der
+Inferenzgeschwindigkeit und Test auf unabhängigen Bildern. Pro Lauf entstehen
+maschinenlesbare \texttt{metrics.json} sowie menschenlesbare Protokolle. Eine
+\emph{append-only}-Historie (\texttt{results/history.jsonl}) hält jeden Lauf
+dauerhaft fest, sodass der Effekt von Hyperparameter-Änderungen über die Zeit
+nachvollziehbar bleibt.
+
+\begin{lstlisting}[language=bash, numbers=none, caption={Beispielaufrufe}]
+# Krankheiten, ResNet18
+python -m bench.benchmark --backbone resnet18
+
+# Zimmerpflanzen-Arten
+python -m bench.benchmark --backbone resnet18 --data-root data/houseplants/house_plant_species \
+    --run-name houseplant_species --task houseplant_species
+
+# Vergleichstabelle + Diagramme erzeugen
+python -m bench.compare && python -m bench.plot
+\end{lstlisting}
+
+\subsection{Hyperparameter}
+Alle Läufe nutzten dieselben Einstellungen, um vergleichbar zu bleiben:
+2~Kopf-Epochen + 3~Fine-Tuning-Epochen, Batch-Größe~32, Lernrate
+$10^{-3}$ (Kopf) bzw.\ $10^{-4}$ (Fine-Tuning), Bildgröße~$224$, Optimierer
+Adam, Verlustfunktion Cross-Entropy.
+
+% ============================================================================
+\section{Ergebnisse}
+% ============================================================================
+
+\subsection{Krankheitserkennung: ResNet18 vs.\ EfficientNet-B0}
+\begin{table}[h]
+\centering
+\caption{Modellvergleich auf PlantVillage (38 Klassen, Validierungssplit)}
+\label{tab:crop}
+\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Modell} & \textbf{Val-Acc} & \textbf{Macro-F1} & \textbf{Params} & \textbf{Train-Zeit} & \textbf{Inferenz} & \textbf{Testbilder} \\
+\midrule
+EfficientNet-B0 & 99{,}69\,\% & 0{,}9969 & 4{,}1\,M & 90\,min & 2{,}89\,ms & 32/33 \\
+ResNet18        & 99{,}52\,\% & 0{,}9951 & 11{,}2\,M & 25\,min & 0{,}54\,ms & 33/33 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textbf{Beobachtung:} EfficientNet-B0 ist minimal genauer, benötigt aber
+$\sim$3{,}6$\times$ mehr Trainingszeit und ist in der Inferenz $\sim$5$\times$
+langsamer. Für dieses Projekt ist \textbf{ResNet18} der bessere Kompromiss --
+nahezu gleiche Genauigkeit bei deutlich geringerem Aufwand. Beide verwechseln vor
+allem schwer unterscheidbare Mais-Krankheiten (Cercospora vs.\ Northern Leaf
+Blight).
+
+\subsection{Zimmerpflanzen: Arten und Zustand}
+\begin{table}[h]
+\centering
+\caption{Zimmerpflanzen-Modelle (ResNet18)}
+\label{tab:house}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Modell} & \textbf{Klassen} & \textbf{Val-Acc} & \textbf{Macro-F1} & \textbf{Train-Zeit} \\
+\midrule
+Art (House Plant Species)        & 47 & 91{,}33\,\% & 0{,}9038 & 13\,min \\
+Art + WeightedRandomSampler      & 47 & 90{,}93\,\% & 0{,}9038 & 12\,min \\
+Zustand (gesund/welk)            &  2 & 88{,}33\,\% & 0{,}8833 &  2{,}5\,min \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Das Art-Modell erreicht solide 91\,\% bei 47~Klassen. Schwächste Klassen sind
+\emph{Yucca} (F1~0{,}53) und \emph{Begonia} -- teils wegen weniger Trainingsbildern,
+teils wegen optischer Ähnlichkeit. Der \texttt{WeightedRandomSampler} brachte hier
+keinen messbaren Vorteil (gleiches Macro-F1). Das Zustand-Modell ist mit nur
+904~Bildern erwartungsgemäß schwächer.
+
+\subsection{Lernkurven}
+\begin{figure}[h]
+\centering
+\maybegraphic{../results/crop_disease_val_acc_curves.png}{width=0.48\linewidth}
+\hfill
+\maybegraphic{../results/houseplant_species_val_acc_curves.png}{width=0.48\linewidth}
+\caption{Validierungs-Accuracy je Epoche: Krankheiten (links), Arten (rechts).
+Der deutliche Sprung markiert jeweils den Übergang von Feature-Extraction zu
+Fine-Tuning.}
+\end{figure}
+
+\subsection{F1-Auswertung und Konfusionsmatrizen}
+\label{sec:f1konfusion}
+Tabelle~\ref{tab:f1} fasst die F1-Werte aller Modelle zusammen (vgl.\ die
+Definition in Abschnitt~\ref{sec:metriken}). Dass Macro-F1 und Accuracy bei den
+Krankheiten fast identisch sind, liegt an den ausgewogenen Klassen; beim
+Arten-Modell ist der Macro-F1 (0{,}904) spürbar niedriger als die Accuracy
+(0{,}913), weil einige seltene Arten den ungewichteten Mittelwert drücken.
+
+\begin{table}[h]
+\centering
+\caption{Precision, Recall und F1 (Macro-Mittel über alle Klassen, Validierung)}
+\label{tab:f1}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Modell} & \textbf{Accuracy} & \textbf{Macro-Precision} & \textbf{Macro-Recall} & \textbf{Macro-F1} \\
+\midrule
+EfficientNet-B0 (Krankheiten) & 99{,}69\,\% & 0{,}9970 & 0{,}9968 & 0{,}9969 \\
+ResNet18 (Krankheiten)        & 99{,}52\,\% & 0{,}9952 & 0{,}9950 & 0{,}9951 \\
+Art (47 Klassen)              & 91{,}33\,\% & 0{,}9100 & 0{,}9020 & 0{,}9038 \\
+Zustand (gesund/welk)         & 88{,}33\,\% & 0{,}8834 & 0{,}8833 & 0{,}8833 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Schwächste Klassen im Backbone-Vergleich.}
+Der Macro-F1 verbirgt, \emph{wo} ein Modell schwächelt. Tabelle~\ref{tab:worstf1}
+listet die drei Klassen mit dem niedrigsten F1 für beide Krankheits-Backbones.
+Beide kämpfen mit denselben Klassen -- vor allem zwei optisch sehr ähnlichen
+Mais-Krankheiten. EfficientNet-B0 liegt dort durchgängig etwas höher als
+ResNet18, was den minimalen Gesamtvorsprung erklärt; der Unterschied ist aber so
+klein, dass er die deutlich längere Trainingszeit kaum rechtfertigt.
+
+\begin{table}[h]
+\centering
+\caption{F1-Score der drei schwächsten Klassen je Backbone (Krankheiten)}
+\label{tab:worstf1}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Klasse} & \textbf{ResNet18} & \textbf{EfficientNet-B0} \\
+\midrule
+Corn -- Cercospora / Gray leaf spot & 0{,}957 & 0{,}972 \\
+Corn -- Northern Leaf Blight        & 0{,}962 & 0{,}975 \\
+Tomato -- Target Spot               & 0{,}979 & 0{,}987 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Konfusionsmatrix am einfachen Beispiel.}
+Das binäre Zustand-Modell eignet sich, um eine Konfusionsmatrix vollständig
+„von Hand“ zu lesen (je 90 Validierungsbilder pro Klasse):
+
+\begin{table}[h]
+\centering
+\caption{Konfusionsmatrix Zustand-Modell (Zeilen = wahr, Spalten = vorhergesagt)}
+\label{tab:cm2}
+\small
+\begin{tabular}{@{}l|cc|c@{}}
+\toprule
+ & \textbf{pred.\ gesund} & \textbf{pred.\ welk} & \textbf{Recall} \\
+\midrule
+\textbf{wahr gesund} & 80 (TP) & 10 (FN) & 0{,}889 \\
+\textbf{wahr welk}   & 11 (FP) & 79 (TN) & 0{,}878 \\
+\midrule
+\textbf{Precision}   & 0{,}879 & 0{,}888 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Aus der Matrix folgt für die Klasse „gesund“ direkt:
+$\text{Precision}=\tfrac{80}{80+11}=0{,}879$,
+$\text{Recall}=\tfrac{80}{80+10}=0{,}889$ und damit
+$\text{F1}=2\cdot\tfrac{0{,}879\cdot0{,}889}{0{,}879+0{,}889}=0{,}884$.
+Die Verwechslungen sind nahezu symmetrisch -- das Modell hat keine systematische
+Schlagseite, ist aber mit nur 904~Trainingsbildern insgesamt noch unsicher.
+
+\paragraph{Konfusionsmatrizen der Mehrklassen-Modelle.}
+Bei 38 bzw.\ 47 Klassen ist die Matrix zu groß für eine Tabelle und wird als
+Heatmap dargestellt (normalisiert je Zeile, dunkler = höher). Die stark
+ausgeprägte Diagonale bestätigt die hohe Genauigkeit; die wenigen helleren
+Nebenfelder entsprechen den in Abschnitt~\ref{sec:diskussion} genannten
+Verwechslungen (z.\,B.\ ähnliche Mais-Krankheiten bzw.\ Yucca/Begonia).
+
+\begin{figure}[h]
+\centering
+\maybegraphic{../results/resnet18/confusion_matrix.png}{width=0.49\linewidth}
+\hfill
+\maybegraphic{../results/houseplant_species/confusion_matrix.png}{width=0.49\linewidth}
+\caption{Normalisierte Konfusionsmatrizen: ResNet18 auf den Krankheiten
+(38~Klassen, links) und das Arten-Modell (47~Klassen, rechts). Die klare
+Diagonale zeigt, dass die meisten Klassen sicher getrennt werden.}
+\end{figure}
+
+% ============================================================================
+\section{Unabhängiger Test mit 10 Internet-Fotos}
+% ============================================================================
+\label{sec:webtest}
+
+Die Validierungs-Accuracy stammt aus demselben Datensatz wie das Training und ist
+daher optimistisch. Für eine ehrlichere Einschätzung wurden \textbf{zehn fremde
+Fotos} (Wikimedia/Wikipedia, reale Aufnahmen, keine Laborbilder) durch die
+kombinierte Inferenz \texttt{Art~$\rightarrow$~Zustand} geschickt.
+
+\begin{table}[h]
+\centering
+\caption{Vorhersagen auf 10 unabhängigen Internet-Fotos}
+\label{tab:webtest}
+\small
+\begin{tabular}{@{}llrlr@{}}
+\toprule
+\textbf{Foto} & \textbf{Vorhergesagte Art} & \textbf{Konf.} & \textbf{Zustand} & \textbf{Treffer} \\
+\midrule
+Aloe Vera        & Aloe Vera                    & 90{,}8\,\% & welk\,(56\%)   & \checkmark \\
+Monstera         & Monstera Deliciosa           & 99{,}9\,\% & gesund\,(94\%) & \checkmark \\
+Bogenhanf        & Snake plant (Sanseviera)     & 87{,}2\,\% & gesund\,(52\%) & \checkmark \\
+Orchidee         & Orchid                       & 53{,}1\,\% & gesund\,(73\%) & \checkmark \\
+Friedenslilie    & Peace lily                   & 99{,}8\,\% & gesund\,(97\%) & \checkmark \\
+Gummibaum        & \emph{Schefflera}            & 48{,}2\,\% & gesund\,(95\%) & \texttimes \\
+Efeutute (Pothos)& \emph{Elephant Ear (Alocasia)} & 36{,}9\,\% & gesund\,(51\%) & \texttimes \\
+ZZ-Pflanze       & ZZ Plant (Zamioculcas)       & 100\,\%    & gesund\,(99\%) & \checkmark \\
+Geldbaum (Jade)  & Jade plant (Crassula ovata)  & 94{,}0\,\% & gesund\,(93\%) & \checkmark \\
+Tulpe            & Tulip                        & 99{,}9\,\% & gesund\,(83\%) & \checkmark \\
+\midrule
+\multicolumn{4}{r}{\textbf{Art korrekt:}} & \textbf{8 / 10} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textbf{Interpretation:} 8 von 10 Arten wurden korrekt erkannt -- ein
+realistisches Ergebnis, das deutlich unter den 91\,\% Validierungs-Accuracy
+liegt und damit den Effekt des \emph{Domänenunterschieds} (andere Hintergründe,
+Beleuchtung, Bildausschnitte) zeigt. Die beiden Fehler sind nachvollziehbar:
+Der Gummibaum (glänzende, gegenständige Blätter) wurde mit \emph{Schefflera}
+verwechselt, die Efeutute mit \emph{Elephant Ear} -- beide haben ähnlich
+herzförmige Blätter. Auffällig sind die \emph{niedrigen Konfidenzen} (48\,\%,
+37\,\%) bei den Fehlern: Das Modell ist sich hier selbst unsicher, was praktisch
+nutzbar wäre (z.\,B.\ „unsicher“ ausgeben statt falscher Sicherheit).
+
+Das Zustand-Modell ist erkennbar schwächer kalibriert: gesunde Pflanzen wurden
+teils nur knapp als „gesund“ eingestuft (Bogenhanf 52\,\%) oder fälschlich als
+„welk“ (Aloe 56\,\%). Mit nur 904~Trainingsbildern ist das nicht überraschend.
+
+\begin{figure}[h]
+\centering
+\maybegraphic{../data/web_test/monstera.jpg}{width=0.3\linewidth}
+\hfill
+\maybegraphic{../data/web_test/rubber_plant.jpg}{width=0.3\linewidth}
+\hfill
+\maybegraphic{../data/web_test/pothos.jpg}{width=0.3\linewidth}
+\caption{Beispiele aus dem Webtest: korrekt erkannte Monstera (links),
+fehlklassifizierter Gummibaum (Mitte) und fehlklassifizierte Efeutute (rechts).}
+\end{figure}
+
+% ============================================================================
+\section{Diskussion und Grenzen}
+% ============================================================================
+\label{sec:diskussion}
+
+\begin{itemize}[nosep]
+  \item \textbf{Validierung $\neq$ echter Test:} Die hohen Genauigkeiten gelten
+        auf Daten aus derselben Quelle. Der Webtest (Abschnitt~\ref{sec:webtest})
+        zeigt den realistischeren Wert.
+  \item \textbf{Laborbilder (PlantVillage):} Die 99\,\% sind durch den sauberen,
+        einheitlichen Bildaufbau begünstigt. Reale Feldfotos sind schwieriger.
+  \item \textbf{Mögliche Daten-Leckage:} Der „augmentierte“ PlantVillage-Datensatz
+        enthält rotierte/gespiegelte Kopien. Liegen Varianten desselben Blattes in
+        Training \emph{und} Validierung, wird die Accuracy zu optimistisch
+        geschätzt -- ein wichtiger Punkt für die kritische Bewertung.
+  \item \textbf{Klassen-Ungleichgewicht:} Bei den Arten reicht die Bildanzahl von
+        66 (Yucca) bis 547 (Monstera). Seltene Klassen sind erwartungsgemäß
+        schwächer.
+  \item \textbf{Kein separater Test-Split:} Für die Zimmerpflanzen wurde mangels
+        Daten kein eigener Held-out-Test angelegt; der Webtest ersetzt ihn nur
+        teilweise (kleine Stichprobe, nur „gesunde“ Pflanzen).
+\end{itemize}
+
+% ============================================================================
+\section{Verbesserungsvorschläge}
+% ============================================================================
+Da es sich um eine Lernarbeit handelt, hier konkrete, gut umsetzbare nächste
+Schritte -- vom Verständnis her wertvoller als reines „mehr Accuracy“:
+
+\begin{enumerate}[label=\textbf{\arabic*.}, nosep, itemsep=2pt]
+  \item \textbf{Sauberer Test-Split.} Einen festen, nie zum Training/zur
+        Modellwahl genutzten Testdatensatz anlegen und nur \emph{einmal} am Ende
+        auswerten. Das ist die wichtigste methodische Verbesserung.
+  \item \textbf{Daten-Leckage prüfen.} Beim PlantVillage-Datensatz sicherstellen,
+        dass augmentierte Varianten desselben Originals nicht gleichzeitig in
+        Train und Val landen (Split nach Original-ID statt nach Bild).
+  \item \textbf{Grad-CAM einbauen.} Eine Heatmap visualisiert, \emph{worauf} das
+        Netz achtet. Das macht Fehlklassifikationen (z.\,B.\ Gummibaum
+        $\rightarrow$ Schefflera) erklärbar und ist didaktisch sehr lehrreich.
+  \item \textbf{Konfidenz-Schwelle / „unsicher“.} Bei niedriger Konfidenz
+        (vgl.\ die 37\,\% beim Pothos) lieber „unsicher“ ausgeben statt einer
+        falschen Klasse. Erhöht die Vertrauenswürdigkeit spürbar.
+  \item \textbf{Mehr Augmentierung \& Epochen für kleine Datensätze.} Besonders
+        das Zustand-Modell (904~Bilder) würde von stärkerer Augmentierung und
+        ggf.\ \emph{Early Stopping} profitieren.
+  \item \textbf{Reproduzierbarkeit.} Globalen Zufalls-Seed setzen und
+        Paketversionen in \texttt{requirements.txt} fixieren (\texttt{pip freeze}),
+        damit Läufe exakt wiederholbar sind.
+  \item \textbf{Kleiner Code-Hinweis.} \texttt{torch.load} sollte künftig mit
+        \texttt{weights\_only=True} aufgerufen werden (PyTorch-Warnung); für
+        selbst erzeugte Checkpoints unkritisch, aber gute Praxis.
+  \item \textbf{Eigene Feldfotos sammeln.} Ein kleiner, selbst fotografierter
+        Testsatz (verschiedene Hintergründe/Licht) zeigt am ehrlichsten, wie gut
+        das Modell in der Praxis generalisiert.
+\end{enumerate}
+
+% ============================================================================
+\section{Fazit}
+% ============================================================================
+Die Projektarbeit setzt eine vollständige Bildklassifikations-Pipeline mit
+Transfer Learning um und deckt alle wesentlichen Schritte ab: Datenaufbereitung,
+Zwei-Phasen-Training, Evaluation, Modellvergleich und Inferenz auf neuen Bildern.
+Auf den Validierungsdaten werden sehr hohe Werte erreicht (Krankheiten bis
+99{,}7\,\%, Arten 91{,}3\,\%); der unabhängige Webtest (8/10) ordnet diese
+ehrlich ein und macht den Unterschied zwischen Validierungs- und realer
+Leistung sichtbar. Damit ist das eigentliche Lernziel erreicht: ein praktisches
+\emph{und} kritisches Verständnis dafür, wie moderne Bildklassifikation
+funktioniert und wo ihre Grenzen liegen.
+
+\end{document}
